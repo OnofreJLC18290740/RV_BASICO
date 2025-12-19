@@ -1,53 +1,108 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>RV con Cámara Real</title>
+  <meta charset="UTF-8" />
+  <title>RV 360 Interactiva</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
 </head>
 
-<body style="margin: 0; overflow: hidden;">
+<body style="margin:0; overflow:hidden;">
+<script>
+  // Click: muestra un mensaje
+  AFRAME.registerComponent('clickeable', {
+    schema: { msg: {type: 'string', default: 'Objeto seleccionado ✅'} },
+    init: function () {
+      this.el.addEventListener('click', () => alert(this.data.msg));
+    }
+  });
 
-  <a-scene
-    embedded
-    vr-mode-ui="enabled: true"
-    renderer="alpha: true"
-    style="background: transparent;">
+  // Hover: cambia color cuando apuntas
+  AFRAME.registerComponent('hover-color', {
+    schema: { over: {type: 'string', default: '#FFD166'} },
+    init: function () {
+      const el = this.el;
+      const original = el.getAttribute('color') || '#4CC3D9';
 
-    <!-- Cámara real -->
-    <a-entity camera look-controls></a-entity>
+      el.addEventListener('mouseenter', () => el.setAttribute('color', this.data.over));
+      el.addEventListener('mouseleave', () => el.setAttribute('color', original));
+    }
+  });
 
-    <!-- Objetos 3D -->
-    <a-box position="0 1 -3" color="red"></a-box>
-    <a-sphere position="1 1 -4" radius="0.5" color="blue"></a-sphere>
-    <a-cylinder position="-1 0.5 -2" radius="0.3" height="1" color="green"></a-cylinder>
+  // Click en "piso invisible": crea una caja donde hiciste click
+  AFRAME.registerComponent('spawn-on-click', {
+    init: function () {
+      this.el.addEventListener('click', (evt) => {
+        const p = evt.detail.intersection.point; // punto 3D del click
+        const scene = document.querySelector('a-scene');
 
-  </a-scene>
+        const box = document.createElement('a-box');
+        box.setAttribute('position', `${p.x} 1 ${p.z}`);
+        box.setAttribute('depth', '0.8');
+        box.setAttribute('height', '1');
+        box.setAttribute('width', '0.8');
+        box.setAttribute('color', '#06D6A0');
+        box.setAttribute('class', 'interactivo');
+        box.setAttribute('clickeable', 'msg: Caja nueva creada 🧊');
+        box.setAttribute('hover-color', 'over: #EF476F');
 
-  <!-- Video de la cámara -->
-  <video id="video"
-         autoplay
-         playsinline
-         muted
-         style="
-           position: fixed;
-           top: 0;
-           left: 0;
-           width: 100%;
-           height: 100%;
-           object-fit: cover;
-           z-index: -1;">
-  </video>
-
-  <script>
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        document.getElementById('video').srcObject = stream;
-      })
-      .catch(err => {
-        alert("No se pudo acceder a la cámara");
+        scene.appendChild(box);
       });
-  </script>
+    }
+  });
+</script>
+
+<a-scene vr-mode-ui="enabled: true">
+  <!-- Cargamos la imagen 360 -->
+  <a-assets>
+    <img id="panorama" src="fondo.jpg">
+  </a-assets>
+
+  <!-- Fondo 360° -->
+  <a-sky src="#panorama" rotation="0 -90 0"></a-sky>
+
+  <!-- Cámara + Cursor (mouse/retícula). Raycaster solo a objetos .interactivo -->
+  <a-entity position="0 1.6 0">
+    <a-camera>
+      <a-cursor raycaster="objects: .interactivo" fuse="false"></a-cursor>
+    </a-camera>
+  </a-entity>
+
+  <!-- “Piso” invisible para poder dar click y crear objetos -->
+  <a-plane class="interactivo"
+           spawn-on-click
+           position="0 0 -4"
+           rotation="-90 0 0"
+           width="30" height="30"
+           material="opacity: 0; transparent: true">
+  </a-plane>
+
+  <!-- Objetos iniciales (interactivos) -->
+  <a-box class="interactivo"
+         position="0 1 -3"
+         rotation="0 45 0"
+         color="#118AB2"
+         clickeable="msg: Soy un cubo ✅"
+         hover-color="over: #FFD166">
+  </a-box>
+
+  <a-sphere class="interactivo"
+            position="2 1 -4"
+            radius="0.7"
+            color="#EF476F"
+            clickeable="msg: Soy una esfera 🔵"
+            hover-color="over: #06D6A0">
+  </a-sphere>
+
+  <a-cylinder class="interactivo"
+              position="-2 0.9 -3"
+              radius="0.5"
+              height="1.8"
+              color="#06D6A0"
+              clickeable="msg: Soy un cilindro 🟢"
+              hover-color="over: #EF476F">
+  </a-cylinder>
+</a-scene>
 
 </body>
 </html>
